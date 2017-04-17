@@ -1,16 +1,13 @@
 #include "CommandParser.h"
 #include "CheckStream.h"
-#include "DHT.h"
 
 
-#define DHT_PIN 2
+// pin definitions
 #define LED_PIN 13
 
 
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
-
-
 // a command parser for messages from controller node
+void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
 CommandParser cmd(runCommand);
 
 
@@ -18,21 +15,19 @@ CommandParser cmd(runCommand);
 CheckStream g_output(Serial);
 
 
-DHT g_dht(DHT_PIN, DHT22);
-float g_temperature = 0;
-float g_humidity = 0;
-bool g_sensorOk = false;
+// other global variables
 unsigned long g_lastSensorSend = 0;
 unsigned long g_sendInterval = 0;
 
 
+// run once on setup
 void setup() {
   Serial.begin(9600);
   cmd.requireCheckSum(false);
-  g_dht.begin();
 }
 
 
+// run repeatedly as long as microcontroller has power
 void loop() {
 
   // read incoming serial commands from controller node
@@ -40,24 +35,16 @@ void loop() {
     cmd.feed(Serial.read());
   }
 
+  // periodically read sensor value
   unsigned long time = millis();
   if (g_sendInterval && time - g_lastSensorSend > g_sendInterval) {
-    float temperature = g_dht.readTemperature();
-    if (isnan(temperature) == false && temperature > -90) {
-      g_temperature = temperature;
-      g_humidity = g_dht.readHumidity();
-      g_sensorOk = true;
-    }
-    if (g_sensorOk) {
-      digitalWrite(LED_PIN, HIGH);
-      g_output.print("t:v ");
-      g_output.println(g_temperature);
-      g_output.print("h:v ");
-      g_output.println(g_humidity);
-      g_lastSensorSend = time;
-      delay(10);
-      digitalWrite(LED_PIN, LOW);
-    }
+    digitalWrite(LED_PIN, HIGH);
+    long val = analogRead(0) * 100L / 1023;
+    g_output.print("p:v ");
+    g_output.println(val, DEC);
+    g_lastSensorSend = time;
+    delay(10);  // delay a moment so LED is visible
+    digitalWrite(LED_PIN, LOW);
   }
 }
 
@@ -66,28 +53,23 @@ void loop() {
 void runCommand(const char *boardId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
   
+  // get list of devices provided by this board
   if (strEq(command, "devices") && argCount == 0) {
-    g_output.println("meta:devices t h");
+    g_output.println("meta:devices p");
 
-  } else if (strEq(boardId, "t") && strEq(command, "info") && argCount == 0) {
-    g_output.println("t:dir in");
-    g_output.println("t:type temperature");
-    g_output.println("t:model AM2302");
-    g_output.println("t:units degrees C");
-    g_output.println("t:ver 0.1");
-    g_output.println("t:ready");
-    
-  } else if (strEq(boardId, "h") && strEq(command, "info") && argCount == 0) {
-    g_output.println("t:dir in");
-    g_output.println("h:type humidity");
-    g_output.println("h:model AM2302");
-    g_output.println("h:units percent");
-    g_output.println("h:ver 0.1");
-    g_output.println("h:ready");
+  // get info about each device
+  } else if (strEq(boardId, "p") && strEq(command, "info") && argCount == 0) {
+    g_output.println("p:dir in");
+    g_output.println("p:type potentiometer");
+    g_output.println("p:model 10k linear");
+    g_output.println("p:ver 0.1");
+    g_output.println("p:ready");
 
+  // enable/disable checksums
   } else if (strEq(command, "checksum") && argCount == 1) {
     cmd.requireCheckSum(atoi(args[0]));
 
+  // set how often to send sensor readings (in seconds)
   } else if (strEq(command, "interval") && argCount == 1) {
     g_sendInterval = round(1000.0 * atof(args[0]));
 
