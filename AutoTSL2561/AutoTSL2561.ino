@@ -7,8 +7,8 @@
 #define LED_PIN 13
 
 
-// a command parser for messages from controller node
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
+// a command parser for messages from controller
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]);
 CommandParser cmd(runCommand);
 
 
@@ -40,7 +40,7 @@ void loop() {
     cmd.feed(Serial.read());
   }
 
-  // periodically read sensor value 
+  // periodically read and send sensor value 
   unsigned long time = millis();
   if (g_sendInterval && time - g_lastSensorSend > g_sendInterval) {
     digitalWrite(LED_PIN, HIGH);
@@ -59,7 +59,7 @@ void loop() {
 
 
 // command processor
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]) {
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
   
   // get list of devices provided by this board
@@ -67,7 +67,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
     g_output.println("meta:devices l");
 
   // get info about each device
-  } else if (strEq(boardId, "l") && strEq(command, "info") && argCount == 0) {
+  } else if (strEq(deviceId, "l") && strEq(command, "info") && argCount == 0) {
     g_output.println("l:dir in");
     g_output.println("l:type light");
     g_output.println("l:model TSL2561");
@@ -90,7 +90,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
 
   // ack/nack the message
   if (recognized) {
-    g_output.print(boardId);
+    g_output.print(deviceId);
     g_output.print(":");
     g_output.print("ack ");
     g_output.print(command);

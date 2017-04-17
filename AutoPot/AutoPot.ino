@@ -7,7 +7,7 @@
 
 
 // a command parser for messages from controller node
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]);
 CommandParser cmd(runCommand);
 
 
@@ -50,7 +50,7 @@ void loop() {
 
 
 // command processor
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]) {
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
   
   // get list of devices provided by this board
@@ -58,7 +58,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
     g_output.println("meta:devices p");
 
   // get info about each device
-  } else if (strEq(boardId, "p") && strEq(command, "info") && argCount == 0) {
+  } else if (strEq(deviceId, "p") && strEq(command, "info") && argCount == 0) {
     g_output.println("p:dir in");
     g_output.println("p:type potentiometer");
     g_output.println("p:model 10k linear");
@@ -80,7 +80,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
 
   // ack/nack the message
   if (recognized) {
-    g_output.print(boardId);
+    g_output.print(deviceId);
     g_output.print(":");
     g_output.print("ack ");
     g_output.print(command);

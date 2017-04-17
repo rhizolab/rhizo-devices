@@ -3,14 +3,13 @@
 #include "Wire.h"
 
 
+// pin/hardware definitions
 #define LED_PIN 13
 #define CO2_ADDR 0x7F
 
 
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
-
-
-// a command parser for messages from controller node
+// a command parser for messages from controller
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]);
 CommandParser cmd(runCommand);
 
 
@@ -18,10 +17,12 @@ CommandParser cmd(runCommand);
 CheckStream g_output(Serial);
 
 
+// other global variables
 unsigned long g_lastSensorSend = 0;
 unsigned long g_sendInterval = 0;
 
 
+// run once on startup
 void setup() {
   Serial.begin(9600);
   cmd.requireCheckSum(false);
@@ -29,6 +30,7 @@ void setup() {
 }
 
 
+// run repeatedly as long as microcontroller has power
 void loop() {
 
   // read incoming serial commands from controller node
@@ -36,6 +38,7 @@ void loop() {
     cmd.feed(Serial.read());
   }
 
+  // periodically read and send sensor value 
   unsigned long time = millis();
   if (g_sendInterval && time - g_lastSensorSend > g_sendInterval) {
     int co2 = readCO2();
@@ -52,13 +55,15 @@ void loop() {
 
 
 // command processor
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]) {
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
   
+  // get list of devices provided by this board
   if (strEq(command, "devices") && argCount == 0) {
     g_output.println("meta:devices c");
 
-  } else if (strEq(boardId, "c") && strEq(command, "info") && argCount == 0) {
+  // get info about each device
+  } else if (strEq(deviceId, "c") && strEq(command, "info") && argCount == 0) {
     g_output.println("c:dir in");
     g_output.println("c:type CO2");
     g_output.println("c:model K-30");
@@ -66,9 +71,11 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
     g_output.println("c:ver 0.1");
     g_output.println("c:ready");
 
+  // enable/disable checksums
   } else if (strEq(command, "checksum") && argCount == 1) {
     cmd.requireCheckSum(atoi(args[0]));
 
+  // set how often to send sensor readings (in seconds)
   } else if (strEq(command, "interval") && argCount == 1) {
     g_sendInterval = round(1000.0 * atof(args[0]));
     if (g_sendInterval < 1000) {
@@ -82,7 +89,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
 
   // ack/nack the message
   if (recognized) {
-    g_output.print(boardId);
+    g_output.print(deviceId);
     g_output.print(":");
     g_output.print("ack ");
     g_output.print(command);

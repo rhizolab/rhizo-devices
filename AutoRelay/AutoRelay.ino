@@ -8,7 +8,7 @@
 
 
 // a command parser for messages from controller
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]);
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]);
 CommandParser cmd(runCommand);
 
 
@@ -41,7 +41,7 @@ void loop() {
 
 
 // command processor
-void runCommand(const char *boardId, const char *command, byte argCount, char *args[]) {
+void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
 
   // get list of devices provided by this board
@@ -49,7 +49,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
     g_output.println("meta:devices r");
 
   // get info about each device
-  } else if (strEq(boardId, "r") && strEq(command, "info") && argCount == 0) {
+  } else if (strEq(deviceId, "r") && strEq(command, "info") && argCount == 0) {
     g_output.println("r:dir out");
     g_output.println("r:type relay");
     g_output.println("r:model 10A/30VDC,10A/250VAC");
@@ -77,7 +77,7 @@ void runCommand(const char *boardId, const char *command, byte argCount, char *a
 
   // ack/nack the message
   if (recognized) {
-    g_output.print(boardId);
+    g_output.print(deviceId);
     g_output.print(":");
     g_output.print("ack ");
     g_output.print(command);
