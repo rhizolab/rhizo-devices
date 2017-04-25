@@ -1,10 +1,9 @@
 #include "CommandParser.h"
 #include "CheckStream.h"
-#include "DHT.h"
+#include "Adafruit_TCS34725.h"
 
 
 // pin definitions
-#define DHT_PIN 2
 #define LED_PIN 13
 
 
@@ -17,8 +16,11 @@ CommandParser cmd(runCommand);
 CheckStream g_output(Serial);
 
 
+// initialize the sensor library
+Adafruit_TCS34725 g_tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_700MS, TCS34725_GAIN_1X);
+
+
 // other global variables
-DHT g_dht(DHT_PIN, DHT22);
 float g_temperature = 0;
 float g_humidity = 0;
 bool g_sensorOk = false;
@@ -30,7 +32,7 @@ unsigned long g_sendInterval = 0;
 void setup() {
   Serial.begin(9600);
   cmd.requireCheckSum(false);
-  g_dht.begin();
+  g_tcs.begin();
 }
 
 
@@ -45,22 +47,21 @@ void loop() {
   // periodically read and send sensor value 
   unsigned long time = millis();
   if (g_sendInterval && time - g_lastSensorSend > g_sendInterval) {
-    float temperature = g_dht.readTemperature();
-    if (isnan(temperature) == false && temperature > -90) {
-      g_temperature = temperature;
-      g_humidity = g_dht.readHumidity();
-      g_sensorOk = true;
-    }
-    if (g_sensorOk) {
-      digitalWrite(LED_PIN, HIGH);
-      g_output.print("t:v ");
-      g_output.println(g_temperature);
-      g_output.print("h:v ");
-      g_output.println(g_humidity);
-      g_lastSensorSend = time;
-      delay(10);
-      digitalWrite(LED_PIN, LOW);
-    }
+    digitalWrite(LED_PIN, HIGH);
+    uint16_t r = 0, g = 0, b = 0, c = 0;
+    g_tcs.getRawData(&r, &g, &b, &c);
+    uint16_t lux = g_tcs.calculateLux(r, g, b);
+    g_output.print("r:v ");
+    g_output.println(r);
+    g_output.print("g:v ");
+    g_output.println(g);
+    g_output.print("b:v ");
+    g_output.println(b);
+    g_output.print("l:v ");
+    g_output.println(lux);
+    g_lastSensorSend = time;
+    delay(5);
+    digitalWrite(LED_PIN, LOW);
   }
 }
 
@@ -68,28 +69,43 @@ void loop() {
 // command processor
 void runCommand(const char *deviceId, const char *command, byte argCount, char *args[]) {
   bool recognized = true;
-  
+
   // get list of devices provided by this board
   if (strEq(command, "devices") && argCount == 0) {
-    g_output.println("meta:devices t h");
+    g_output.println("meta:devices r g b l");
 
-  // get info about temperature sensor
-  } else if (strEq(deviceId, "t") && strEq(command, "info") && argCount == 0) {
-    g_output.println("t:dir in");
-    g_output.println("t:type temperature");
-    g_output.println("t:model AM2302");
-    g_output.println("t:units degrees C");
-    g_output.println("t:ver 0.1");
-    g_output.println("t:ready");
+  // get info about red channel
+  } else if (strEq(deviceId, "r") && strEq(command, "info") && argCount == 0) {
+    g_output.println("r:dir in");
+    g_output.println("r:type red");
+    g_output.println("r:model TCS34725");
+    g_output.println("r:ver 0.1");
+    g_output.println("r:ready");
 
-  // get info about humidity sensor
-  } else if (strEq(deviceId, "h") && strEq(command, "info") && argCount == 0) {
-    g_output.println("h:dir in");
-    g_output.println("h:type humidity");
-    g_output.println("h:model AM2302");
-    g_output.println("h:units percent");
-    g_output.println("h:ver 0.1");
-    g_output.println("h:ready");
+  // get info about green channel
+  } else if (strEq(deviceId, "g") && strEq(command, "info") && argCount == 0) {
+    g_output.println("g:dir in");
+    g_output.println("g:type green");
+    g_output.println("g:model TCS34725");
+    g_output.println("g:ver 0.1");
+    g_output.println("g:ready");
+
+  // get info about blue channel
+  } else if (strEq(deviceId, "b") && strEq(command, "info") && argCount == 0) {
+    g_output.println("b:dir in");
+    g_output.println("b:type blue");
+    g_output.println("b:model TCS34725");
+    g_output.println("b:ver 0.1");
+    g_output.println("b:ready");
+
+  // get info about lux measurement
+  } else if (strEq(deviceId, "l") && strEq(command, "info") && argCount == 0) {
+    g_output.println("l:dir in");
+    g_output.println("l:type lux");
+    g_output.println("l:model TCS34725");
+    g_output.println("l:units lux");
+    g_output.println("l:ver 0.1");
+    g_output.println("l:ready");
 
   // enable/disable checksums
   } else if (strEq(command, "checksum") && argCount == 1) {
