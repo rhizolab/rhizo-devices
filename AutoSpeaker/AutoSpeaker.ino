@@ -18,7 +18,7 @@ CheckStream g_output(Serial);
 
 // other global variables
 unsigned long g_lastSensorSend = 0;
-unsigned long g_sendInterval = 1000;
+unsigned long g_sendInterval = 0;
 
 
 // run once on startup
